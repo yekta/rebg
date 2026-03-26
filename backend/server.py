@@ -5,18 +5,26 @@ import math
 import os
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 import torch
 import uvicorn
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from transformers import AutoModelForImageSegmentation
 
-MODEL_ID = os.getenv("BIREFNET_MODEL_ID", "ZhengPeng7/BiRefNet_dynamic-matting")
+BACKEND_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BACKEND_DIR.parent
+load_dotenv(PROJECT_ROOT / ".env")
+load_dotenv(BACKEND_DIR / ".env")
+
+MODEL_ID = os.getenv("BIREFNET_MODEL_ID", "briaai/RMBG-2.0")
 REQUESTED_DEVICE = os.getenv("BIREFNET_DEVICE", "auto").strip().lower()
 USE_HALF = os.getenv("BIREFNET_USE_HALF", "0").strip() == "1"
+HF_TOKEN = (os.getenv("HUGGINGFACE_TOKEN") or os.getenv("HF_TOKEN") or "").strip() or None
 
 
 def env_int(name: str, default: int, minimum: int = 1) -> int:
@@ -60,6 +68,7 @@ class RuntimeConfig:
     max_side: int
     align_height: int
     align_width: int
+    hf_token: str | None
 
 
 @dataclass
@@ -147,9 +156,12 @@ class BiRefNetRunner:
     @staticmethod
     def _load_model(config: RuntimeConfig) -> torch.nn.Module:
         torch.set_float32_matmul_precision("high")
+        model_kwargs: dict[str, Any] = {"trust_remote_code": True}
+        if config.hf_token:
+            model_kwargs["token"] = config.hf_token
         model = AutoModelForImageSegmentation.from_pretrained(
             config.model_id,
-            trust_remote_code=True,
+            **model_kwargs,
         )
         model.eval()
         model.to(config.device)
@@ -349,14 +361,26 @@ class BiRefNetRunner:
         return mask
 
 
-runtime = RuntimeConfig(
-    model_id=MODEL_ID,
-    device=pick_device(REQUESTED_DEVICE),
-    use_half=USE_HALF,
-    max_side=MAX_SIDE,
-    align_height=ALIGN_HEIGHT,
-    align_width=ALIGN_WIDTH,
-)
+def build_runtime_config() -> RuntimeConfig:
+    model_id = MODEL_ID.strip()
+    if model_id.lower() == "briaai/rmbg-2.0" and not HF_TOKEN:
+        raise RuntimeError(
+            "briaai/RMBG-2.0 requires a Hugging Face token. "
+            "Set HUGGINGFACE_TOKEN (or HF_TOKEN) in your .env file."
+        )
+
+    return RuntimeConfig(
+        model_id=model_id,
+        device=pick_device(REQUESTED_DEVICE),
+        use_half=USE_HALF,
+        max_side=MAX_SIDE,
+        align_height=ALIGN_HEIGHT,
+        align_width=ALIGN_WIDTH,
+        hf_token=HF_TOKEN,
+    )
+
+
+runtime = build_runtime_config()
 runner = BiRefNetRunner(runtime)
 
 app = FastAPI(title="BiRefNet Local Backend", version="0.1.0")
