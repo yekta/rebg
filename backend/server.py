@@ -14,7 +14,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from transformers import AutoModelForImageSegmentation
 
-MODEL_ID = os.getenv("BIREFNET_MODEL_ID", "ZhengPeng7/BiRefNet_dynamic")
+MODEL_ID = os.getenv("BIREFNET_MODEL_ID", "ZhengPeng7/BiRefNet_dynamic-matting")
 REQUESTED_DEVICE = os.getenv("BIREFNET_DEVICE", "auto").strip().lower()
 USE_HALF = os.getenv("BIREFNET_USE_HALF", "0").strip() == "1"
 
