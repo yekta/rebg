@@ -19,9 +19,18 @@ Inference stays local on your machine.
 - macOS on Apple Silicon (M-series).
 - Adobe Photoshop (UXP plugin support, PS 24+ recommended).
 - Python 3.10+ (3.11 recommended).
+- Hugging Face access token with permission for `briaai/RMBG-2.0`.
 - Internet once for initial model download from Hugging Face (after cache, runs offline).
 
 ## 1) Start Local Backend
+
+Before first run, create `.env` in project root:
+
+```bash
+HUGGINGFACE_TOKEN=hf_your_token_here
+```
+
+The backend loads `.env` from project root (or `backend/.env`).
 
 From project root:
 
@@ -58,7 +67,8 @@ curl http://localhost:8765/health
 
 Environment variables before starting backend:
 
-- `BIREFNET_MODEL_ID` (default `ZhengPeng7/BiRefNet_dynamic-matting`)
+- `HUGGINGFACE_TOKEN` (or `HF_TOKEN`) required when using `briaai/RMBG-2.0`
+- `BIREFNET_MODEL_ID` (default `briaai/RMBG-2.0`)
 - `BIREFNET_DEVICE` (`auto`, `mps`, or `cpu`; default `auto`)
 - `BIREFNET_USE_HALF` (`1` to enable FP16 on MPS, default `0`)
 - `BIREFNET_HOST` (default `127.0.0.1`)
@@ -71,7 +81,7 @@ Example:
 
 ```bash
 cd backend
-BIREFNET_MODEL_ID=ZhengPeng7/BiRefNet_HR-matting BIREFNET_DEVICE=mps ./run_backend.sh
+HUGGINGFACE_TOKEN=hf_your_token_here BIREFNET_MODEL_ID=briaai/RMBG-2.0 BIREFNET_DEVICE=mps ./run_backend.sh
 ```
 
 Large document example:
