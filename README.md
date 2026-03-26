@@ -36,7 +36,7 @@ From project root:
 
 ```bash
 cd backend
-./run_backend.sh
+./run.sh
 ```
 
 The script creates `.venv`, installs dependencies, and starts on:
@@ -81,14 +81,14 @@ Example:
 
 ```bash
 cd backend
-HUGGINGFACE_TOKEN=hf_your_token_here BIREFNET_MODEL_ID=briaai/RMBG-2.0 BIREFNET_DEVICE=mps ./run_backend.sh
+HUGGINGFACE_TOKEN=hf_your_token_here BIREFNET_MODEL_ID=briaai/RMBG-2.0 BIREFNET_DEVICE=mps ./run.sh
 ```
 
 Large document example:
 
 ```bash
 cd backend
-BIREFNET_MAX_SIDE=1536 ./run_backend.sh
+BIREFNET_MAX_SIDE=1536 ./run.sh
 ```
 
 ## Notes
