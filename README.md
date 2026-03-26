@@ -58,7 +58,7 @@ curl http://localhost:8765/health
 
 Environment variables before starting backend:
 
-- `BIREFNET_MODEL_ID` (default `ZhengPeng7/BiRefNet_dynamic`)
+- `BIREFNET_MODEL_ID` (default `ZhengPeng7/BiRefNet_dynamic-matting`)
 - `BIREFNET_DEVICE` (`auto`, `mps`, or `cpu`; default `auto`)
 - `BIREFNET_USE_HALF` (`1` to enable FP16 on MPS, default `0`)
 - `BIREFNET_HOST` (default `127.0.0.1`)
@@ -71,7 +71,7 @@ Example:
 
 ```bash
 cd backend
-BIREFNET_MODEL_ID=ZhengPeng7/BiRefNet_HR BIREFNET_DEVICE=mps ./run_backend.sh
+BIREFNET_MODEL_ID=ZhengPeng7/BiRefNet_HR-matting BIREFNET_DEVICE=mps ./run_backend.sh
 ```
 
 Large document example:
