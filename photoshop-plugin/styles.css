@@ -1,0 +1,82 @@
+:root {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  font-family: "SF Pro Text", "Helvetica Neue", sans-serif;
+  font-size: 12px;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+
+.title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hint {
+  opacity: 0.8;
+  line-height: 1.4;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field label {
+  opacity: 0.9;
+}
+
+.field input {
+  border: 1px solid rgba(127, 127, 127, 0.5);
+  border-radius: 6px;
+  padding: 6px 8px;
+  background: transparent;
+  color: inherit;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+button {
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #1a73e8;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.status {
+  min-height: 32px;
+  white-space: pre-wrap;
+  line-height: 1.3;
+}
+
+.status.info {
+  opacity: 0.85;
+}
+
+.status.ok {
+  color: #2d9d78;
+}
+
+.status.error {
+  color: #e34850;
+}

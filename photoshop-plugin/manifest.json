@@ -1,0 +1,44 @@
+{
+  "manifestVersion": 5,
+  "id": "com.yekta.birefnet.removebg",
+  "name": "BiRefNet Local Remove BG",
+  "version": "0.1.0",
+  "main": "index.html",
+  "host": {
+    "app": "PS",
+    "minVersion": "24.0.0"
+  },
+  "entrypoints": [
+    {
+      "type": "panel",
+      "id": "birefnetPanel",
+      "label": {
+        "default": "BiRefNet Remove BG"
+      },
+      "minimumSize": {
+        "width": 280,
+        "height": 220
+      },
+      "maximumSize": {
+        "width": 720,
+        "height": 1000
+      },
+      "preferredDockedSize": {
+        "width": 320,
+        "height": 260
+      },
+      "preferredFloatingSize": {
+        "width": 340,
+        "height": 280
+      }
+    }
+  ],
+  "requiredPermissions": {
+    "network": {
+      "domains": [
+        "http://127.0.0.1",
+        "http://localhost"
+      ]
+    }
+  }
+}
