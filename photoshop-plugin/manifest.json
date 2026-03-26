@@ -8,6 +8,41 @@
     "app": "PS",
     "minVersion": "24.0.0"
   },
+  "icons": [
+    {
+      "width": 23,
+      "height": 23,
+      "path": "icons/plugin-dark.png",
+      "scale": [
+        1,
+        2
+      ],
+      "theme": [
+        "darkest",
+        "dark",
+        "medium"
+      ],
+      "species": [
+        "generic"
+      ]
+    },
+    {
+      "width": 23,
+      "height": 23,
+      "path": "icons/plugin-light.png",
+      "scale": [
+        1,
+        2
+      ],
+      "theme": [
+        "light",
+        "lightest"
+      ],
+      "species": [
+        "generic"
+      ]
+    }
+  ],
   "entrypoints": [
     {
       "type": "panel",
@@ -30,14 +65,47 @@
       "preferredFloatingSize": {
         "width": 340,
         "height": 280
-      }
+      },
+      "icons": [
+        {
+          "width": 23,
+          "height": 23,
+          "path": "icons/plugin-dark.png",
+          "scale": [
+            1,
+            2
+          ],
+          "theme": [
+            "darkest",
+            "dark",
+            "medium"
+          ]
+        },
+        {
+          "width": 23,
+          "height": 23,
+          "path": "icons/plugin-light.png",
+          "scale": [
+            1,
+            2
+          ],
+          "theme": [
+            "light",
+            "lightest"
+          ]
+        }
+      ]
     }
   ],
   "requiredPermissions": {
     "network": {
       "domains": [
+        "http://localhost:8765",
         "http://127.0.0.1",
-        "http://localhost"
+        "http://127.0.0.1:8765",
+        "http://localhost",
+        "https://localhost:8765",
+        "https://127.0.0.1:8765"
       ]
     }
   }

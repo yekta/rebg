@@ -5,23 +5,107 @@ const photoshop = require("photoshop");
 
 const { app, core, imaging } = photoshop;
 
-const DEFAULT_BACKEND_URL = "http://127.0.0.1:8765";
+const DEFAULT_BACKEND_URL = "http://localhost:8765";
 const SETTINGS_KEY_BACKEND_URL = "birefnet.backend_url";
 
 let busy = false;
+const BASE64_CHARS =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+function errorMessage(err) {
+  if (err && typeof err.message === "string" && err.message.trim()) {
+    return err.message;
+  }
+  return String(err || "Unknown error.");
+}
+
+function buildTroubleshootingHint(message) {
+  const msg = (message || "").toLowerCase();
+
+  if (msg.includes("permission denied to the url") || msg.includes("manifest entry not found")) {
+    return "Network permission mismatch for this URL. Use http://localhost:8765, then remove/re-add plugin in UXP Developer Tool so manifest changes are applied.";
+  }
+
+  if (msg.includes("executeasmodal") || msg.includes("modal scope")) {
+    return "Photoshop requires this step to run in modal scope. Please retry; if it still fails, restart Photoshop and reload the plugin.";
+  }
+
+  if (msg.includes("invalid array length") || msg.includes("pixel buffer")) {
+    return "Photoshop returned an unexpected pixel buffer. Try rasterizing the selected layer or using a smaller canvas, then run again.";
+  }
+
+  if (msg.includes("rearrange-reduction") || msg.includes("chunks of")) {
+    return "Backend hit a model shape constraint. Restart backend with the latest code so auto resize/pad is applied.";
+  }
+
+  if (msg.includes("to have") && msg.includes("channels")) {
+    return "Backend hit a tensor-channel shape constraint. Restart backend with the latest code so dynamic padding retries are applied.";
+  }
+
+  if (
+    msg.includes("failed to fetch") ||
+    msg.includes("backend error") ||
+    msg.includes("networkerror")
+  ) {
+    return "Make sure local backend is running at the configured URL.";
+  }
+
+  return "";
+}
 
 function toBase64(uint8) {
-  let binary = "";
-  const chunkSize = 0x8000;
-  for (let i = 0; i < uint8.length; i += chunkSize) {
-    const chunk = uint8.subarray(i, i + chunkSize);
-    binary += String.fromCharCode.apply(null, chunk);
+  if (!(uint8 instanceof Uint8Array)) {
+    throw new Error("Expected Uint8Array for base64 encoding.");
   }
-  return btoa(binary);
+
+  const parts = [];
+  let block = "";
+  const flushAt = 4096;
+  let i = 0;
+
+  while (i + 2 < uint8.length) {
+    const n = (uint8[i] << 16) | (uint8[i + 1] << 8) | uint8[i + 2];
+    block +=
+      BASE64_CHARS[(n >> 18) & 63] +
+      BASE64_CHARS[(n >> 12) & 63] +
+      BASE64_CHARS[(n >> 6) & 63] +
+      BASE64_CHARS[n & 63];
+    i += 3;
+
+    if (block.length >= flushAt) {
+      parts.push(block);
+      block = "";
+    }
+  }
+
+  const remaining = uint8.length - i;
+  if (remaining === 1) {
+    const n = uint8[i];
+    block +=
+      BASE64_CHARS[(n >> 2) & 63] + BASE64_CHARS[(n & 3) << 4] + "==";
+  } else if (remaining === 2) {
+    const n = (uint8[i] << 8) | uint8[i + 1];
+    block +=
+      BASE64_CHARS[(n >> 10) & 63] +
+      BASE64_CHARS[(n >> 4) & 63] +
+      BASE64_CHARS[(n & 15) << 2] +
+      "=";
+  }
+
+  if (block) {
+    parts.push(block);
+  }
+
+  return parts.join("");
 }
 
 function fromBase64(b64) {
-  const binary = atob(b64);
+  let binary;
+  try {
+    binary = atob(b64);
+  } catch (_err) {
+    throw new Error("Backend returned invalid base64 mask data.");
+  }
   const output = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
     output[i] = binary.charCodeAt(i);
@@ -31,11 +115,63 @@ function fromBase64(b64) {
 
 function clampBackendUrl(url) {
   const trimmed = (url || "").trim();
-  return trimmed || DEFAULT_BACKEND_URL;
+  if (!trimmed) {
+    return DEFAULT_BACKEND_URL;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return DEFAULT_BACKEND_URL;
+    }
+
+    // UXP loopback permission matching is more reliable with localhost.
+    const hostname = parsed.hostname === "127.0.0.1" ? "localhost" : parsed.hostname;
+    const port = parsed.port ? `:${parsed.port}` : "";
+    return `${parsed.protocol}//${hostname}${port}`;
+  } catch (_err) {
+    return trimmed;
+  }
+}
+
+function normalizePixelBuffer(data) {
+  if (data instanceof Uint8Array) {
+    return data;
+  }
+
+  if (data instanceof ArrayBuffer) {
+    return new Uint8Array(data);
+  }
+
+  if (ArrayBuffer.isView(data)) {
+    return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+  }
+
+  throw new Error("Unsupported pixel data returned by Photoshop.");
+}
+
+function getStoredBackendUrl() {
+  try {
+    if (typeof localStorage !== "undefined") {
+      return localStorage.getItem(SETTINGS_KEY_BACKEND_URL);
+    }
+  } catch (_err) {}
+  return null;
+}
+
+function setStoredBackendUrl(url) {
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(SETTINGS_KEY_BACKEND_URL, url);
+    }
+  } catch (_err) {}
 }
 
 function status(rootNode, message, level = "info") {
   const statusEl = rootNode.querySelector("#status");
+  if (!statusEl) {
+    return;
+  }
   statusEl.className = `status ${level}`;
   statusEl.textContent = message;
 }
@@ -43,7 +179,9 @@ function status(rootNode, message, level = "info") {
 function setBusy(rootNode, value) {
   busy = value;
   const runButton = rootNode.querySelector("#run");
-  runButton.disabled = value;
+  if (runButton) {
+    runButton.disabled = value;
+  }
 }
 
 function validateSingleLayerSelection() {
@@ -74,6 +212,10 @@ async function readSelectedLayerPixels(layer, doc) {
     applyAlpha: false,
   });
 
+  if (!pixels || !pixels.sourceBounds || !pixels.imageData) {
+    throw new Error("Could not read raster pixels from selected layer.");
+  }
+
   const sourceBounds = pixels.sourceBounds;
   const { width, height } = boundsToWidthHeight(sourceBounds);
 
@@ -85,16 +227,22 @@ async function readSelectedLayerPixels(layer, doc) {
   const data = await pixels.imageData.getData();
   pixels.imageData.dispose();
 
-  let uint8;
-  if (data instanceof Uint8Array) {
-    uint8 = data;
-  } else if (ArrayBuffer.isView(data)) {
-    uint8 = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
-  } else {
-    uint8 = new Uint8Array(data);
-  }
+  const uint8 = normalizePixelBuffer(data);
   const pixelCount = width * height;
-  const components = Math.max(1, Math.round(uint8.length / pixelCount));
+  if (pixelCount < 1) {
+    throw new Error("Selected layer has invalid bounds.");
+  }
+
+  if (uint8.length % pixelCount !== 0) {
+    throw new Error(
+      `Unexpected pixel buffer size (${uint8.length}) for layer bounds ${width}x${height}.`
+    );
+  }
+
+  const components = uint8.length / pixelCount;
+  if (components < 1 || components > 8) {
+    throw new Error(`Unsupported component count returned by Photoshop: ${components}`);
+  }
 
   return {
     width,
@@ -157,6 +305,17 @@ async function applyMaskToLayer(layerID, maskBytes, width, height, left, top) {
   }
 }
 
+async function readSelectedLayerPayloadInModal() {
+  return core.executeAsModal(
+    async () => {
+      const { doc, layer } = validateSingleLayerSelection();
+      const payload = await readSelectedLayerPixels(layer, doc);
+      return { payload, layerID: layer.id };
+    },
+    { commandName: "Read Layer Pixels" }
+  );
+}
+
 async function removeBackground(rootNode) {
   if (busy) {
     return;
@@ -165,14 +324,13 @@ async function removeBackground(rootNode) {
   setBusy(rootNode, true);
 
   try {
-    const { doc, layer } = validateSingleLayerSelection();
     const backendInput = rootNode.querySelector("#backendUrl");
     const backendUrl = clampBackendUrl(backendInput.value);
 
-    localStorage.setItem(SETTINGS_KEY_BACKEND_URL, backendUrl);
+    setStoredBackendUrl(backendUrl);
     status(rootNode, "Reading layer pixels...", "info");
 
-    const payload = await readSelectedLayerPixels(layer, doc);
+    const { payload, layerID } = await readSelectedLayerPayloadInModal();
     status(rootNode, "Running BiRefNet locally...", "info");
 
     const result = await fetchMaskFromBackend(backendUrl, payload);
@@ -184,7 +342,7 @@ async function removeBackground(rootNode) {
 
     status(rootNode, "Applying mask to selected layer...", "info");
     await applyMaskToLayer(
-      layer.id,
+      layerID,
       maskBytes,
       payload.width,
       payload.height,
@@ -200,9 +358,11 @@ async function removeBackground(rootNode) {
       "ok"
     );
   } catch (err) {
+    const message = errorMessage(err);
+    const hint = buildTroubleshootingHint(message);
     status(
       rootNode,
-      `${err.message}\n\nMake sure local backend is running at the configured URL.`,
+      hint ? `${message}\n\n${hint}` : message,
       "error"
     );
   } finally {
@@ -213,11 +373,14 @@ async function removeBackground(rootNode) {
 function renderPanel(rootNode) {
   rootNode.innerHTML = `
     <div class="container">
-      <div class="title">BiRefNet Local Background Removal</div>
-      <div class="hint">Select one layer, then run. The plugin creates/replaces the layer mask with a BiRefNet prediction.</div>
+      <div class="hero">
+        <div class="eyebrow">Local AI Segmentation</div>
+        <div class="title">BiRefNet Background Cutout</div>
+        <div class="hint">Select one layer and run. The plugin creates or replaces that layer's mask with a BiRefNet prediction.</div>
+      </div>
       <div class="field">
         <label for="backendUrl">Backend URL</label>
-        <input id="backendUrl" type="text" />
+        <input id="backendUrl" type="text" spellcheck="false" placeholder="http://localhost:8765" />
       </div>
       <div class="actions">
         <button id="run" type="button">Remove Background</button>
@@ -227,10 +390,10 @@ function renderPanel(rootNode) {
   `;
 
   const backendEl = rootNode.querySelector("#backendUrl");
-  backendEl.value = clampBackendUrl(localStorage.getItem(SETTINGS_KEY_BACKEND_URL));
+  backendEl.value = clampBackendUrl(getStoredBackendUrl());
   backendEl.addEventListener("change", () => {
     backendEl.value = clampBackendUrl(backendEl.value);
-    localStorage.setItem(SETTINGS_KEY_BACKEND_URL, backendEl.value);
+    setStoredBackendUrl(backendEl.value);
   });
 
   const runButton = rootNode.querySelector("#run");
@@ -241,7 +404,19 @@ entrypoints.setup({
   panels: {
     birefnetPanel: {
       create(rootNode) {
-        renderPanel(rootNode);
+        try {
+          renderPanel(rootNode);
+        } catch (err) {
+          console.error("[BiRefNet] Panel initialization failed:", err);
+          rootNode.innerHTML = `
+            <div class="container">
+              <div class="title">BiRefNet Local Background Removal</div>
+              <div id="status" class="status error">Panel initialization failed:\n${errorMessage(
+                err
+              )}</div>
+            </div>
+          `;
+        }
       },
       show() {},
       hide() {},
