@@ -1,7 +1,7 @@
 {
   "manifestVersion": 5,
-  "id": "com.yekta.birefnet.removebg",
-  "name": "BiRefNet Local Remove BG",
+  "id": "com.yekta.rebg.removebg",
+  "name": "Rebg",
   "version": "0.1.0",
   "main": "index.html",
   "host": {
@@ -46,25 +46,25 @@
   "entrypoints": [
     {
       "type": "panel",
-      "id": "birefnetPanel",
+      "id": "rebgPanel",
       "label": {
-        "default": "BiRefNet Remove BG"
+        "default": "Rebg"
       },
       "minimumSize": {
-        "width": 280,
-        "height": 220
+        "width": 240,
+        "height": 140
       },
       "maximumSize": {
         "width": 720,
         "height": 1000
       },
       "preferredDockedSize": {
-        "width": 320,
-        "height": 260
+        "width": 280,
+        "height": 150
       },
       "preferredFloatingSize": {
-        "width": 340,
-        "height": 280
+        "width": 300,
+        "height": 170
       },
       "icons": [
         {

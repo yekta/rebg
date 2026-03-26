@@ -1,19 +1,18 @@
-# BiRefNet Local Photoshop Plugin (Apple Silicon)
+# Rebg Photoshop Plugin (Apple Silicon)
 
 This project adds a Photoshop UXP panel that:
 
 1. Reads pixels from your currently selected layer.
-2. Sends them to a local BiRefNet backend running on your Mac.
+2. Sends them to a local backend running on your Mac.
 3. Receives a grayscale foreground mask.
 4. Creates/replaces the selected layer's layer mask with that output.
 
-Inference stays local on your machine.  
-Default model: `ZhengPeng7/BiRefNet_dynamic` (official BiRefNet model for general use).
+Inference stays local on your machine.
 
 ## Project Structure
 
 - `photoshop-plugin/` UXP plugin you load in Adobe UXP Developer Tool.
-- `backend/` Local Python service (FastAPI + PyTorch + BiRefNet).
+- `backend/` Local Python service (FastAPI + PyTorch backend).
 
 ## Requirements
 
@@ -46,7 +45,7 @@ curl http://localhost:8765/health
 1. Open **Adobe UXP Developer Tool**.
 2. Choose **Add Plugin** -> select folder: `photoshop-plugin`.
 3. Launch the plugin in Photoshop.
-4. Open panel: **Plugins -> BiRefNet Remove BG**.
+4. Open panel: **Plugins -> Rebg**.
 
 ## 3) Use It
 
@@ -106,7 +105,7 @@ Then in UXP Developer Tool:
 
 1. Remove this plugin entry.
 2. Add it again from the `photoshop-plugin` folder.
-3. Load again and open panel `Plugins -> BiRefNet Remove BG`.
+3. Load again and open panel `Plugins -> Rebg`.
 
 If panel shows `Permission denied to the url ... Manifest entry not found`:
 

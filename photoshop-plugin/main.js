@@ -6,7 +6,7 @@ const photoshop = require("photoshop");
 const { app, core, imaging } = photoshop;
 
 const DEFAULT_BACKEND_URL = "http://localhost:8765";
-const SETTINGS_KEY_BACKEND_URL = "birefnet.backend_url";
+const SETTINGS_KEY_BACKEND_URL = "rebg.backend_url";
 
 let busy = false;
 const BASE64_CHARS =
@@ -35,11 +35,11 @@ function buildTroubleshootingHint(message) {
   }
 
   if (msg.includes("rearrange-reduction") || msg.includes("chunks of")) {
-    return "Backend hit a model shape constraint. Restart backend with the latest code so auto resize/pad is applied.";
+    return "Backend hit a shape constraint. Restart backend with the latest code so auto resize/pad is applied.";
   }
 
   if (msg.includes("to have") && msg.includes("channels")) {
-    return "Backend hit a tensor-channel shape constraint. Restart backend with the latest code so dynamic padding retries are applied.";
+    return "Backend hit a tensor-channel constraint. Restart backend with the latest code so dynamic padding retries are applied.";
   }
 
   if (
@@ -298,7 +298,7 @@ async function applyMaskToLayer(layerID, maskBytes, width, height, left, top) {
           targetBounds: { left, top },
         });
       },
-      { commandName: "Apply BiRefNet Mask" }
+      { commandName: "Apply Layer Mask" }
     );
   } finally {
     maskImageData.dispose();
@@ -331,7 +331,7 @@ async function removeBackground(rootNode) {
     status(rootNode, "Reading layer pixels...", "info");
 
     const { payload, layerID } = await readSelectedLayerPayloadInModal();
-    status(rootNode, "Running BiRefNet locally...", "info");
+    status(rootNode, "Processing image...", "info");
 
     const result = await fetchMaskFromBackend(backendUrl, payload);
 
@@ -350,11 +350,9 @@ async function removeBackground(rootNode) {
       payload.top
     );
 
-    const modelName = result.modelId || "BiRefNet";
-    const deviceName = result.device || "local";
     status(
       rootNode,
-      `Mask applied successfully.\nModel: ${modelName}\nDevice: ${deviceName}`,
+      "Background removed successfully.",
       "ok"
     );
   } catch (err) {
@@ -372,18 +370,17 @@ async function removeBackground(rootNode) {
 
 function renderPanel(rootNode) {
   rootNode.innerHTML = `
-    <div class="container">
-      <div class="hero">
-        <div class="eyebrow">Local AI Segmentation</div>
-        <div class="title">BiRefNet Background Cutout</div>
-        <div class="hint">Select one layer and run. The plugin creates or replaces that layer's mask with a BiRefNet prediction.</div>
-      </div>
+    <div class="panel">
       <div class="field">
-        <label for="backendUrl">Backend URL</label>
-        <input id="backendUrl" type="text" spellcheck="false" placeholder="http://localhost:8765" />
+        <label class="field-label" for="backendUrl">Backend URL</label>
+        <sp-textfield
+          id="backendUrl"
+          spellcheck="false"
+          placeholder="http://localhost:8765"
+        ></sp-textfield>
       </div>
       <div class="actions">
-        <button id="run" type="button">Remove Background</button>
+        <sp-button id="run" variant="secondary">Remove Background</sp-button>
       </div>
       <div id="status" class="status info">Ready.</div>
     </div>
@@ -402,15 +399,14 @@ function renderPanel(rootNode) {
 
 entrypoints.setup({
   panels: {
-    birefnetPanel: {
+    rebgPanel: {
       create(rootNode) {
         try {
           renderPanel(rootNode);
         } catch (err) {
-          console.error("[BiRefNet] Panel initialization failed:", err);
+          console.error("[Rebg] Panel initialization failed:", err);
           rootNode.innerHTML = `
-            <div class="container">
-              <div class="title">BiRefNet Local Background Removal</div>
+            <div class="panel">
               <div id="status" class="status error">Panel initialization failed:\n${errorMessage(
                 err
               )}</div>
