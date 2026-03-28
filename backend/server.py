@@ -21,7 +21,7 @@ PROJECT_ROOT = BACKEND_DIR.parent
 load_dotenv(PROJECT_ROOT / ".env")
 load_dotenv(BACKEND_DIR / ".env")
 
-MODEL_ID = os.getenv("BIREFNET_MODEL_ID", "briaai/RMBG-2.0")
+MODEL_ID = os.getenv("BIREFNET_MODEL_ID", "ZhengPeng7/BiRefNet_HR-matting")
 REQUESTED_DEVICE = os.getenv("BIREFNET_DEVICE", "auto").strip().lower()
 USE_HALF = os.getenv("BIREFNET_USE_HALF", "0").strip() == "1"
 HF_TOKEN = (os.getenv("HUGGINGFACE_TOKEN") or os.getenv("HF_TOKEN") or "").strip() or None
@@ -363,11 +363,6 @@ class BiRefNetRunner:
 
 def build_runtime_config() -> RuntimeConfig:
     model_id = MODEL_ID.strip()
-    if model_id.lower() == "briaai/rmbg-2.0" and not HF_TOKEN:
-        raise RuntimeError(
-            "briaai/RMBG-2.0 requires a Hugging Face token. "
-            "Set HUGGINGFACE_TOKEN (or HF_TOKEN) in your .env file."
-        )
 
     return RuntimeConfig(
         model_id=model_id,
