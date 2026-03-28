@@ -3,7 +3,7 @@
 const { entrypoints } = require("uxp");
 const photoshop = require("photoshop");
 
-const { app, core, imaging } = photoshop;
+const { action, app, core, imaging } = photoshop;
 
 const DEFAULT_BACKEND_URL = "http://localhost:8765";
 const SETTINGS_KEY_BACKEND_URL = "rebg.backend_url";
@@ -297,6 +297,21 @@ async function applyMaskToLayer(layerID, maskBytes, width, height, left, top) {
           replace: true,
           targetBounds: { left, top },
         });
+
+        // Force full canvas redraw — putLayerMask alone doesn't
+        // invalidate the entire viewport, causing a visual glitch
+        // until the user zooms or scrolls.
+        await action.batchPlay(
+          [
+            {
+              _obj: "select",
+              _target: [{ _ref: "layer", _id: layerID }],
+              makeVisible: false,
+              _options: { dialogOptions: "dontDisplay" },
+            },
+          ],
+          {}
+        );
       },
       { commandName: "Apply Layer Mask" }
     );
